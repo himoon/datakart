@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "datakart"
-version = "1.5.1"
+version = "1.6.2"
 authors = [
   { name="HYUNIL MOON", email="hyunil.moon@gmail.com" },
 ]
 description = "A small data kart package"
 readme = "README.md"
-keywords = ["datakart", "data", "kart", "ECOS", "SGIS", "NAVER", "K-data", "ecos.bok.or.kr", "data.go.kr", "kostat.go.kr", "juso.go.kr"]
+keywords = ["datakart", "data", "kart", "ECOS", "SGIS", "NAVER", "Kakao", "K-data", "ecos.bok.or.kr", "data.go.kr", "kostat.go.kr", "juso.go.kr"]
 requires-python = ">=3.7"
 dependencies = ["requests>=2,<3", "xmltodict"]
 license = {file = "LICENSE"}
