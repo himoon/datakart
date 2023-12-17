@@ -49,6 +49,7 @@ class Sgis:
         adm_cd: str = None,
         low_search: str = "1",
         year: str = "2023",
+        session: requests.Session = None,
     ) -> dict:
         # https://sgis.kostat.go.kr/developer/html/newOpenApi/api/dataApi/addressBoundary.html#hadmarea
         # UTM-K (EPSG 5179)
@@ -59,7 +60,85 @@ class Sgis:
             low_search=low_search,
             year=year,
         )
-        resp = requests.get(url, params=params)
+        resp = (
+            session.get(url, params=params)
+            if session
+            else requests.get(url, params=params)
+        )
         parsed = resp.json()
         self.raise_for_err_cd(parsed)
         return parsed
+
+    def geocode_wgs84(
+        self,
+        address: str,
+        page: int = 0,
+        limit: int = 5,
+        session: requests.Session = None,
+    ) -> list[dict]:
+        """입력된 주소 위치 제공 API(좌표계:WGS84, EPSG:4326)
+
+        Args:
+            address (str): 검색주소
+            page (int, optional): 페이지. Defaults to 0.
+            limit (int, optional): 결과 수. Defaults to 5.
+            session (requests.Session, optional): 세션. Defaults to None.
+
+        Returns:
+            list[dict]: 검색결과
+        """
+        # https://sgis.kostat.go.kr/developer/html/newOpenApi/api/dataApi/addressBoundary.html#geocodewgs84
+        url = "https://sgisapi.kostat.go.kr/OpenAPI3/addr/geocodewgs84.json"
+        params = dict(
+            accessToken=self.access_token,
+            address=f"{address}",
+            pagenum=f"{page}",
+            resultcount=f"{limit}",
+        )
+        resp = (
+            session.get(url, params=params)
+            if session
+            else requests.get(url, params=params)
+        )
+        parsed: dict = resp.json()
+        self.raise_for_err_cd(parsed)
+
+        result: dict = parsed.get("result", {})
+        return result.get("resultdata", [])
+
+    def geocode_utmk(
+        self,
+        address: str,
+        page: int = 0,
+        limit: int = 5,
+        session: requests.Session = None,
+    ) -> list[dict]:
+        """입력된 주소 위치 제공 API(좌표계:UTM-K, EPSG:5179)
+
+        Args:
+            address (str): 검색주소
+            page (int, optional): 페이지. Defaults to 0.
+            limit (int, optional): 결과 수. Defaults to 5.
+            session (requests.Session, optional): 세션. Defaults to None.
+
+        Returns:
+            list[dict]: 검색결과
+        """
+        # https://sgis.kostat.go.kr/developer/html/newOpenApi/api/dataApi/addressBoundary.html#geocode
+        url = "https://sgisapi.kostat.go.kr/OpenAPI3/addr/geocode.json"
+        params = dict(
+            accessToken=self.access_token,
+            address=f"{address}",
+            pagenum=f"{page}",
+            resultcount=f"{limit}",
+        )
+        resp = (
+            session.get(url, params=params)
+            if session
+            else requests.get(url, params=params)
+        )
+        parsed: dict = resp.json()
+        self.raise_for_err_cd(parsed)
+
+        result: dict = parsed.get("result", {})
+        return result.get("resultdata", [])
