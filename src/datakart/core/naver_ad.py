@@ -32,11 +32,12 @@ class NaverAd:
             "X-Signature": self.signature(timestamp, method, url),
         }
 
-    def keywords(
+    def keywords_tool(
         self,
-        hint_keywords: str,
+        *,
         site_id: str = None,
         biztp_id: int = None,
+        keywords: str = None,
         event: int = None,
         month: int = None,
         show_detail: bool = False,
@@ -46,10 +47,10 @@ class NaverAd:
         url = "/keywordstool"
         headers = self.get_header(method, url)
         params = {
-            "hintKeywords": hint_keywords,
             "showDetail": 1 if show_detail else 0,
             **({"siteId": site_id} if site_id else {}),
             **({"biztpId": biztp_id} if biztp_id else {}),
+            **({"hintKeywords": keywords} if keywords else {}),
             **({"event": event} if event else {}),
             **({"month": month} if month else {}),
         }
