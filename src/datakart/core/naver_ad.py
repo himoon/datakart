@@ -9,23 +9,6 @@ from typing import Dict, List
 import requests
 
 
-def biztp_cd() -> List[Dict]:
-    import json
-    import pathlib
-
-    with open(pathlib.Path(__file__).parent / "assets" / "na_biztp.json") as fp:
-        return json.load(fp)
-
-
-def event_cd() -> List[Dict]:
-    # https://gist.github.com/naver-searchad/235202ffb08f9433b6f7cb10e45875f7#file-seasonal_event_code-md
-    import json
-    import pathlib
-
-    with open(pathlib.Path(__file__).parent / "assets" / "na_event.json") as fp:
-        return json.load(fp)
-
-
 class NaverAd:
     """NAVER Search Ad API"""
 
@@ -74,3 +57,20 @@ class NaverAd:
         resp = requests.get(self.host_url + url, headers=headers, params=params)
         resp.raise_for_status()
         return resp.json()
+
+    @staticmethod
+    def biztp_cd() -> List[Dict]:
+        import json
+        import pathlib
+
+        with open(pathlib.Path(__file__).parent / "assets" / "na_biztp.json") as fp:
+            return json.load(fp)
+
+    @staticmethod
+    def event_cd() -> List[Dict]:
+        # https://gist.github.com/naver-searchad/235202ffb08f9433b6f7cb10e45875f7#file-seasonal_event_code-md
+        import json
+        import pathlib
+
+        with open(pathlib.Path(__file__).parent / "assets" / "na_event.json") as fp:
+            return json.load(fp)
