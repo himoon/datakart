@@ -4,7 +4,7 @@ import base64
 import hashlib
 import hmac
 import time
-from typing import Dict
+from typing import Dict, List
 
 import requests
 
@@ -41,7 +41,7 @@ class NaverAd:
         event: int = None,
         month: int = None,
         show_detail: bool = False,
-    ) -> Dict:
+    ) -> Dict[str, List]:
         # https://naver.github.io/searchad-apidoc/#/tags/RelKwdStat
         method = "GET"
         url = "/keywordstool"
