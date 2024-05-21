@@ -1,0 +1,58 @@
+from __future__ import annotations
+
+import base64
+import hashlib
+import hmac
+import time
+from typing import Dict
+
+import requests
+
+
+class NaverAd:
+    """NAVER Search Ad API"""
+
+    def __init__(self, api_key: str, api_sec: str, cust_id: str) -> None:
+        self.api_key: str = api_key
+        self.api_sec: str = api_sec
+        self.cust_id: str = cust_id
+        self.host_url = "https://api.searchad.naver.com"
+
+    def signature(self, timestamp: int, method: str, url: str) -> bytes:
+        message = f"{timestamp}.{method}.{url}"
+        hash = hmac.new(self.api_sec.encode(), message.encode(), hashlib.sha256)
+        return base64.b64encode(hash.digest())
+
+    def get_header(self, method, url) -> Dict:
+        timestamp = int(round(time.time() * 1000))
+        return {
+            "X-Timestamp": f"{timestamp}",
+            "X-API-KEY": self.api_key,
+            "X-Customer": self.cust_id,
+            "X-Signature": self.signature(timestamp, method, url),
+        }
+
+    def keywords(
+        self,
+        hint_keywords: str,
+        site_id: str = None,
+        biztp_id: int = None,
+        event: int = None,
+        month: int = None,
+        show_detail: bool = False,
+    ) -> Dict:
+        # https://naver.github.io/searchad-apidoc/#/tags/RelKwdStat
+        method = "GET"
+        url = "/keywordstool"
+        headers = self.get_header(method, url)
+        params = {
+            "hintKeywords": hint_keywords,
+            "showDetail": 1 if show_detail else 0,
+            **({"siteId": site_id} if site_id else {}),
+            **({"biztpId": biztp_id} if biztp_id else {}),
+            **({"event": event} if event else {}),
+            **({"month": month} if month else {}),
+        }
+        resp = requests.get(self.host_url + url, headers=headers, params=params)
+        resp.raise_for_status()
+        return resp.json()
