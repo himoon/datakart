@@ -59,18 +59,22 @@ class NaverAd:
         return resp.json()
 
     @staticmethod
-    def biztp_cd() -> List[Dict]:
+    def get_biztp_codes() -> List[Dict]:
         import json
         import pathlib
 
-        with open(pathlib.Path(__file__).parent / "assets" / "na_biztp.json") as fp:
+        with open(
+            pathlib.Path(__file__).parent / "assets" / "naver_ad_biztp.json"
+        ) as fp:
             return json.load(fp)
 
     @staticmethod
-    def event_cd() -> List[Dict]:
+    def get_event_codes() -> List[Dict]:
         # https://gist.github.com/naver-searchad/235202ffb08f9433b6f7cb10e45875f7#file-seasonal_event_code-md
         import json
         import pathlib
 
-        with open(pathlib.Path(__file__).parent / "assets" / "na_event.json") as fp:
+        with open(
+            pathlib.Path(__file__).parent / "assets" / "naver_ad_event.json"
+        ) as fp:
             return json.load(fp)
