@@ -8,6 +8,17 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+def _query_category(cid: int = 0) -> Dict:
+    url = "https://datalab.naver.com/shoppingInsight/getCategory.naver"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Referer": "https://datalab.naver.com/shoppingInsight/sKeyword.naver",
+    }
+    resp = requests.get(url, params=dict(cid=cid), headers=headers)
+    resp.raise_for_status()
+    return resp.json()
+
+
 class Naver:
     """NAVER Service API"""
 
@@ -121,3 +132,8 @@ class Naver:
         resp = requests.post(url, json=params, headers=self.headers)
         resp.raise_for_status()
         return resp.json()
+
+    @staticmethod
+    def lab_category(cid: int = 0) -> List[Dict]:
+        result = _query_category(cid).get("childList", [])
+        return [{k: item[k] for k in ["cid", "pid", "name", "leaf"]} for item in result]
