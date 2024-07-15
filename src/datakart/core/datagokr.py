@@ -70,7 +70,7 @@ class Datagokr:
             else:
                 raise ValueError(f"invalid response, got {parsed!r}")
 
-    def apt_trans(self, lawd_code: str, deal_ym: str) -> list[dict]:
+    def apt_trade(self, lawd_code: str, deal_ym: str) -> list[dict]:
         # https://www.data.go.kr/data/15058747/openapi.do?recommendDataYn=Y
         url = "http://openapi.molit.go.kr:8081/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptTrade"
         params = {"serviceKey": self.api_key, "LAWD_CD": lawd_code, "DEAL_YMD": deal_ym}
@@ -91,11 +91,8 @@ class Datagokr:
             return []
         raise ValueError(f'[{result_code}] {header.get("resultMsg","")}')
 
-    def apt_trans_detailed(
-        self, lawd_code: str, deal_ym: str, n_rows: int = 1000
-    ) -> list[dict]:
+    def apt_trade_detailed(self, lawd_code: str, deal_ym: str, n_rows: int = 1000) -> list[dict]:
         # https://www.data.go.kr/data/15057511/openapi.do?recommendDataYn=Y
-
         def _api_call(lawd_code: str, deal_ym: str, n_rows: int, page: int) -> dict:
             url = "http://openapi.molit.go.kr/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptTradeDev"
             params = {
