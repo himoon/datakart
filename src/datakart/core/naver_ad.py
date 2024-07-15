@@ -63,9 +63,7 @@ class NaverAd:
         import json
         import pathlib
 
-        with open(
-            pathlib.Path(__file__).parent / "assets" / "naver_ad_biztp.json"
-        ) as fp:
+        with open(pathlib.Path(__file__).parent / "assets" / "naver_ad_biztp.json") as fp:
             return json.load(fp)
 
     @staticmethod
@@ -74,7 +72,5 @@ class NaverAd:
         import json
         import pathlib
 
-        with open(
-            pathlib.Path(__file__).parent / "assets" / "naver_ad_event.json"
-        ) as fp:
+        with open(pathlib.Path(__file__).parent / "assets" / "naver_ad_event.json") as fp:
             return json.load(fp)

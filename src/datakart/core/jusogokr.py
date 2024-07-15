@@ -10,10 +10,7 @@ logger = logging.getLogger(__name__)
 class Jusogokr:
     """도로명 주소 API"""
 
-    def __init__(
-        self,
-        api_key: str,
-    ) -> None:
+    def __init__(self, api_key: str) -> None:
         self.api_key: str = api_key
 
     @staticmethod

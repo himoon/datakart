@@ -171,11 +171,7 @@ class Ecos:
             "통계표코드": f"{stat_code}",
         }
         result = self._api_call(args)
-        return (
-            result.get(f"{sname}", {}).get("row", [])
-            if not raw and resp_type == RespType.JSON
-            else result
-        )
+        return result.get(f"{sname}", {}).get("row", []) if not raw and resp_type == RespType.JSON else result
 
     def stat_word(
         self,
@@ -210,11 +206,7 @@ class Ecos:
             "용어": f"{stat_word}",
         }
         result = self._api_call(args)
-        return (
-            result.get(f"{sname}", {}).get("row", [])
-            if not raw and resp_type == RespType.JSON
-            else result
-        )
+        return result.get(f"{sname}", {}).get("row", []) if not raw and resp_type == RespType.JSON else result
 
     def stat_item_list(
         self,
@@ -249,11 +241,7 @@ class Ecos:
             "통계표코드": stat_code,
         }
         result = self._api_call(args)
-        return (
-            result.get(f"{sname}", {}).get("row", [])
-            if not raw and resp_type == RespType.JSON
-            else result
-        )
+        return result.get(f"{sname}", {}).get("row", []) if not raw and resp_type == RespType.JSON else result
 
     def stat_search(
         self,
@@ -314,11 +302,7 @@ class Ecos:
             "통계항목코드4": f"{item_code4}",
         }
         result = self._api_call(args)
-        return (
-            result.get(f"{sname}", {}).get("row", [])
-            if not raw and resp_type == RespType.JSON
-            else result
-        )
+        return result.get(f"{sname}", {}).get("row", []) if not raw and resp_type == RespType.JSON else result
 
     def key_stat_list(
         self,
@@ -350,11 +334,7 @@ class Ecos:
             "요청종료건수": f"{row_to}",
         }
         result = self._api_call(args)
-        return (
-            result.get(f"{sname}", {}).get("row", [])
-            if not raw and resp_type == RespType.JSON
-            else result
-        )
+        return result.get(f"{sname}", {}).get("row", []) if not raw and resp_type == RespType.JSON else result
 
     def stat_meta(
         self,
@@ -389,8 +369,4 @@ class Ecos:
             "데이터명": f"{item_name}",
         }
         result = self._api_call(args)
-        return (
-            result.get(f"{sname}", {}).get("row", [])
-            if not raw and resp_type == RespType.JSON
-            else result
-        )
+        return result.get(f"{sname}", {}).get("row", []) if not raw and resp_type == RespType.JSON else result

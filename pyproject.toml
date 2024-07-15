@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "datakart"
-version = "1.6.11"
+version = "1.7.1"
 authors = [
   { name="HYUNIL MOON", email="hyunil.moon@gmail.com" },
 ]
-description = "A small data kart package"
+description = "datakart package for fetching data"
 readme = "README.md"
 keywords = ["datakart", "data", "kart", "ECOS", "SGIS", "NAVER", "Kakao", "K-data", "ecos.bok.or.kr", "data.go.kr", "kostat.go.kr", "juso.go.kr"]
 requires-python = ">=3.7"
