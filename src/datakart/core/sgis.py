@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from typing import Literal
 
 import requests
 
@@ -11,11 +12,7 @@ logger = logging.getLogger(__name__)
 class Sgis:
     """통계지리정보서비스 SGIS"""
 
-    def __init__(
-        self,
-        api_key: str,
-        api_sec: str,
-    ) -> None:
+    def __init__(self, api_key: str, api_sec: str) -> None:
         self.api_key: str = api_key
         self.api_sec: str = api_sec
 
@@ -47,12 +44,29 @@ class Sgis:
     def hadm_area(
         self,
         adm_cd: str = None,
-        low_search: str = "1",
+        low_search: Literal["0", "1", "2"] = "1",
         year: str = "2023",
         session: requests.Session = None,
-    ) -> dict:
+    ) -> str:
+        """행정구역 코드 이용 행정구역 경계 정보 제공 API(좌표계:WGS84, EPSG:4326)
+
+        Args:
+            adm_cd (str, optional): 행정구역코드. Defaults to None.
+            low_search (str, optional): 하위 통계 정보 유무. Defaults to "1".
+            year (str, optional): 기준연도. Defaults to "2023".
+            session (requests.Session, optional): 세션. Defaults to None.
+
+        Returns:
+            str: GeoJSON 형식의 결과
+
+        """
         # https://sgis.kostat.go.kr/developer/html/newOpenApi/api/dataApi/addressBoundary.html#hadmarea
         # UTM-K (EPSG 5179)
+        try:
+            import geopandas as gpd
+        except ImportError:
+            raise ImportError("The geopandas package is required for fetching data. You can install it using `pip install -U geopandas`")
+
         url = "https://sgisapi.kostat.go.kr/OpenAPI3/boundary/hadmarea.geojson"
         params = dict(
             accessToken=self.access_token,
@@ -60,22 +74,15 @@ class Sgis:
             low_search=low_search,
             year=year,
         )
-        resp = (
-            session.get(url, params=params)
-            if session
-            else requests.get(url, params=params)
-        )
+        resp = session.get(url, params=params) if session else requests.get(url, params=params)
         parsed = resp.json()
         self.raise_for_err_cd(parsed)
-        return parsed
 
-    def geocode_wgs84(
-        self,
-        address: str,
-        page: int = 0,
-        limit: int = 5,
-        session: requests.Session = None,
-    ) -> list[dict]:
+        gdf_resp: gpd.GeoDataFrame = gpd.read_file(resp.text)
+        gdf_resp.set_crs("EPSG:5179", allow_override=True, inplace=True)
+        return gdf_resp.to_json(to_wgs84=True)
+
+    def geocode_wgs84(self, address: str, page: int = 0, limit: int = 5, session: requests.Session = None) -> list[dict]:
         """입력된 주소 위치 제공 API(좌표계:WGS84, EPSG:4326)
 
         Args:
@@ -95,24 +102,14 @@ class Sgis:
             pagenum=f"{page}",
             resultcount=f"{limit}",
         )
-        resp = (
-            session.get(url, params=params)
-            if session
-            else requests.get(url, params=params)
-        )
+        resp = session.get(url, params=params) if session else requests.get(url, params=params)
         parsed: dict = resp.json()
         self.raise_for_err_cd(parsed)
 
         result: dict = parsed.get("result", {})
         return result.get("resultdata", [])
 
-    def geocode_utmk(
-        self,
-        address: str,
-        page: int = 0,
-        limit: int = 5,
-        session: requests.Session = None,
-    ) -> list[dict]:
+    def geocode_utmk(self, address: str, page: int = 0, limit: int = 5, session: requests.Session = None) -> list[dict]:
         """입력된 주소 위치 제공 API(좌표계:UTM-K, EPSG:5179)
 
         Args:
@@ -132,11 +129,7 @@ class Sgis:
             pagenum=f"{page}",
             resultcount=f"{limit}",
         )
-        resp = (
-            session.get(url, params=params)
-            if session
-            else requests.get(url, params=params)
-        )
+        resp = session.get(url, params=params) if session else requests.get(url, params=params)
         parsed: dict = resp.json()
         self.raise_for_err_cd(parsed)
 
