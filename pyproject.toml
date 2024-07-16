@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "datakart"
-version = "1.7.4"
+version = "1.7.5"
 authors = [
   { name="HYUNIL MOON", email="hyunil.moon@gmail.com" },
 ]
