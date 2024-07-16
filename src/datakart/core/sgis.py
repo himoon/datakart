@@ -48,12 +48,12 @@ class Sgis:
         year: str = "2023",
         session: requests.Session = None,
     ) -> str:
-        """행정구역 코드 이용 행정구역 경계 정보 제공 API(좌표계:WGS84, EPSG:4326)
+        """행정구역 코드 이용 행정구역 경계 정보 제공 API(좌표계: WGS84 "EPSG:4326")
 
         Args:
             adm_cd (str, optional): 행정구역코드. Defaults to None.
             low_search (str, optional): 하위 통계 정보 유무. Defaults to "1".
-            year (str, optional): 기준연도. Defaults to "2023".
+            year (str, optional): 기준연도("2000" ~ "2023"). Defaults to "2023".
             session (requests.Session, optional): 세션. Defaults to None.
 
         Returns:
@@ -61,7 +61,6 @@ class Sgis:
 
         """
         # https://sgis.kostat.go.kr/developer/html/newOpenApi/api/dataApi/addressBoundary.html#hadmarea
-        # UTM-K (EPSG 5179)
         try:
             import geopandas as gpd
         except ImportError:
@@ -78,12 +77,12 @@ class Sgis:
         parsed = resp.json()
         self.raise_for_err_cd(parsed)
 
-        gdf_resp: gpd.GeoDataFrame = gpd.read_file(resp.text)
-        gdf_resp.set_crs("EPSG:5179", allow_override=True, inplace=True)
-        return gdf_resp.to_json(drop_id=True, to_wgs84=True)
+        gdf_resp: gpd.GeoDataFrame = gpd.read_file(resp.content)
+        gdf_resp.set_crs("EPSG:5179", allow_override=True, inplace=True)  # 좌표계: UTM-K "EPSG:5179"
+        return gdf_resp.to_json(drop_id=True, to_wgs84=True, separators=(",", ":"))
 
     def geocode_wgs84(self, address: str, page: int = 0, limit: int = 5, session: requests.Session = None) -> list[dict]:
-        """입력된 주소 위치 제공 API(좌표계:WGS84, EPSG:4326)
+        """입력된 주소 위치 제공 API(좌표계: WGS84 "EPSG:4326")
 
         Args:
             address (str): 검색주소
@@ -110,7 +109,7 @@ class Sgis:
         return result.get("resultdata", [])
 
     def geocode_utmk(self, address: str, page: int = 0, limit: int = 5, session: requests.Session = None) -> list[dict]:
-        """입력된 주소 위치 제공 API(좌표계:UTM-K, EPSG:5179)
+        """입력된 주소 위치 제공 API(좌표계: UTM-K "EPSG:5179")
 
         Args:
             address (str): 검색주소
