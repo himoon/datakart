@@ -28,25 +28,27 @@ class Jusogokr:
         firstSort: Literal["none", "road", "location"] = "none",  # 정확도 정렬 (none), 우선정렬(road: 도로명 포함, location: 지번 포함)
         hstryYn: Literal["Y", "N"] = "N",  # 변동된 주소정보 포함 여부
         addInfoYn: Literal["Y", "N"] = "N",  # 출력결과에 추가된 항목(hstryYn, relJibun, hemdNm) 제공여부
-    ) -> list[dict]:
+    ) -> dict:
         """검색API: 도로명주소"""
-        # https://business.juso.go.kr/addrlink/openApi/searchApi.do
-        url = "https://business.juso.go.kr/addrlink/addrLinkApi.do"
-        params = dict(
-            confmKey=self.api_key,
-            keyword=keyword,
-            currentPage=f"{currentPage}",
-            countPerPage=f"{countPerPage}",
-            firstSort=firstSort,
-            hstryYn=hstryYn,
-            addInfoYn=addInfoYn,
-            resultType="json",
-        )
-        resp = requests.get(url, params=params)
-        parsed = resp.json()
-        results = parsed.get("results", {})
-        self.raise_for_status(results.get("common", {}))
-        return results
+        if keyword := keyword.strip():
+            # https://business.juso.go.kr/addrlink/openApi/searchApi.do
+            url = "https://business.juso.go.kr/addrlink/addrLinkApi.do"
+            params = dict(
+                confmKey=self.api_key,
+                keyword=keyword,
+                currentPage=f"{currentPage}",
+                countPerPage=f"{countPerPage}",
+                firstSort=firstSort,
+                hstryYn=hstryYn,
+                addInfoYn=addInfoYn,
+                resultType="json",
+            )
+            resp = requests.get(url, params=params)
+            parsed = resp.json()
+            results = parsed.get("results", {})
+            self.raise_for_status(results.get("common", {}))
+            return results
+        return {}
 
     def addr_coord(
         self,
@@ -56,7 +58,7 @@ class Jusogokr:
         buldMnnm: str,  # 건물본번
         buldSlno: str,  # 건물부번
         **kwargs,
-    ):
+    ) -> dict:
         """검색API: 좌표제공"""
         # https://business.juso.go.kr/addrlink/openApi/searchApi.do
         url = "https://business.juso.go.kr/addrlink/addrCoordApi.do"
