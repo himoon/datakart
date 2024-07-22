@@ -46,8 +46,7 @@ class Jusogokr:
         parsed = resp.json()
         results = parsed.get("results", {})
         self.raise_for_status(results.get("common", {}))
-        juso: list[dict] = results.get("juso", [])
-        return juso
+        return results
 
     def addr_coord(
         self,
@@ -74,5 +73,4 @@ class Jusogokr:
         parsed = resp.json()
         results = parsed.get("results", {})
         self.raise_for_status(results.get("common", {}))
-        juso: list[dict] = results.get("juso", [])
-        return juso
+        return results
