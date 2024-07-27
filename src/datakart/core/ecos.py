@@ -1,16 +1,113 @@
 from __future__ import annotations
 
 import logging
+import time
 from calendar import monthrange
 from datetime import datetime as dt
 from enum import Enum
+from typing import Literal
 
 import requests
+from dateutil.relativedelta import relativedelta
 
 logger = logging.getLogger(__name__)
+session: requests.Session = None
 
 
-class RespType(str, Enum):
+class API_NAME(str, Enum):
+    STAT_TABLE_LIST = "StatisticTableList"
+    STAT_WORD = "StatisticWord"
+    STAT_ITEM_LIST = "StatisticItemList"
+    STAT_SEARCH = "StatisticSearch"
+    KEY_STAT_LIST = "KeyStatisticList"
+    STAT_META = "StatisticMeta"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+class FREQ(str, Enum):
+    ANNUAL = "A"
+    SEMMI_ANNUAL = "S"
+    QUARTERLY = "Q"
+    MONTHLY = "M"
+    SEMMI_MONTHLY = "SM"
+    DAILY = "D"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+def to_date_string(now: dt, freq: Literal["A", "S", "Q", "M", "SM", "D"]) -> str:
+    if freq == FREQ.ANNUAL:
+        return now.strftime("%Y")
+
+    if freq == FREQ.SEMMI_ANNUAL:
+        return now.strftime(f"%YS{(now.month - 1) // 6 + 1}")
+
+    if freq == FREQ.QUARTERLY:
+        return now.strftime(f"%YQ{(now.month - 1) // 3 + 1}")
+
+    if freq == FREQ.MONTHLY:
+        return now.strftime("%Y%m")
+
+    if freq == FREQ.SEMMI_MONTHLY:
+        _, days = monthrange(now.year, now.month)
+        sm = "S1" if now.day <= int(days / 2) else "S2"
+        return now.strftime(f"%Y%m{sm}")
+
+    if freq == FREQ.DAILY:
+        return now.strftime("%Y%m%d")
+
+    raise ValueError(f"invalid interval, got {freq=}")
+
+
+def to_datetime(date_string: str, intv: Literal["A", "S", "Q", "M", "SM", "D"]) -> dt:
+    # TODO
+    if intv == FREQ.ANNUAL:
+        return dt.strptime(date_string, "%Y")
+
+    if intv == FREQ.SEMMI_ANNUAL:
+        year, cnt = [int(x) for x in date_string.split("S")]
+        if cnt == 1:
+            return dt(year=year, month=6, day=30)
+        elif cnt == 2:
+            return dt(year=year, month=12, day=31)
+        raise ValueError(f"invalid date_string, got {date_string=}")
+
+    if intv == FREQ.QUARTERLY:
+        year, cnt = [int(x) for x in date_string.split("Q")]
+        if cnt == 1:
+            return dt(year=year, month=3, day=31)
+        elif cnt == 2:
+            return dt(year=year, month=6, day=30)
+        elif cnt == 3:
+            return dt(year=year, month=9, day=30)
+        elif cnt == 4:
+            return dt(year=year, month=12, day=31)
+        raise ValueError(f"invalid date_string, got {date_string!r}")
+
+    if intv == FREQ.MONTHLY:
+        return dt.strptime(date_string, "%Y%m")
+
+    if intv == FREQ.SEMMI_MONTHLY:
+        yyyymm, cnt = date_string.split("S")
+        cnt = int(cnt)
+        now = dt.strptime(yyyymm, "%Y%m")
+        _, days = monthrange(now.year, now.month)
+        if cnt == 1:
+            return now.replace(day=int(days / 2))
+        elif cnt == 2:
+            return now.replace(day=days)
+        raise ValueError(f"invalid date_string, got {date_string!r}")
+
+    if intv == FREQ.DAILY:
+        return dt.strptime(date_string, "%Y%m%d")
+
+    raise ValueError(f"invalid interval, got {intv!r}")
+
+
+class ReqType(str, Enum):
     JSON = "json"
     XML = "xml"
 
@@ -26,347 +123,221 @@ class RespLang(str, Enum):
         return self.value
 
 
-class RespIntv(str, Enum):
-    ANNUAL = "A"
-    SEMMI_ANNUAL = "S"
-    QUARTERLY = "Q"
-    MONTHLY = "M"
-    SEMMI_MONTHLY = "SM"
-    DAILY = "D"
-
-    def __str__(self) -> str:
-        return self.value
-
-
-class ServName(str, Enum):
-    STAT_TABLE_LIST = "StatisticTableList"
-    STAT_WORD = "StatisticWord"
-    STAT_ITEM_LIST = "StatisticItemList"
-    STAT_SEARCH = "StatisticSearch"
-    KEY_STAT_LIST = "KeyStatisticList"
-    STAT_META = "StatisticMeta"
-
-    def __str__(self) -> str:
-        return self.value
-
-
-def dt_to_str(now: dt, intv: str) -> str:
-    if intv == RespIntv.ANNUAL:
-        return now.strftime("%Y")
-
-    if intv == RespIntv.SEMMI_ANNUAL:
-        s = "S1" if now.month <= 6 else "S2"
-        return now.strftime(f"%Y{s}")
-
-    if intv == RespIntv.QUARTERLY:
-        return now.strftime(f"%YQ{now.month//4 +1}")
-
-    if intv == RespIntv.MONTHLY:
-        return now.strftime("%Y%m")
-
-    if intv == RespIntv.SEMMI_MONTHLY:
-        _, days = monthrange(now.year, now.month)
-        sm = "S1" if now.day <= int(days / 2) else "S2"
-        return now.strftime(f"%Y%m{sm}")
-
-    if intv == RespIntv.DAILY:
-        return now.strftime("%Y%m%d")
-
-    raise ValueError(f"invalid interval, got {intv!r}")
-
-
-def str_to_dt(date_string: str, intv: str) -> dt:
-    if intv == RespIntv.ANNUAL:
-        return dt.strptime(date_string, "%Y")
-
-    if intv == RespIntv.SEMMI_ANNUAL:
-        year, cnt = [int(x) for x in date_string.split("S")]
-        if cnt == 1:
-            return dt(year=year, month=6, day=30)
-        elif cnt == 2:
-            return dt(year=year, month=12, day=31)
-        raise ValueError(f"invalid date_string, got {date_string!r}")
-
-    if intv == RespIntv.QUARTERLY:
-        year, cnt = [int(x) for x in date_string.split("Q")]
-        if cnt == 1:
-            return dt(year=year, month=3, day=31)
-        elif cnt == 2:
-            return dt(year=year, month=6, day=30)
-        elif cnt == 3:
-            return dt(year=year, month=9, day=30)
-        elif cnt == 4:
-            return dt(year=year, month=12, day=31)
-        raise ValueError(f"invalid date_string, got {date_string!r}")
-
-    if intv == RespIntv.MONTHLY:
-        return dt.strptime(date_string, "%Y%m")
-
-    if intv == RespIntv.SEMMI_MONTHLY:
-        yyyymm, cnt = date_string.split("S")
-        cnt = int(cnt)
-        now = dt.strptime(yyyymm, "%Y%m")
-        _, days = monthrange(now.year, now.month)
-        if cnt == 1:
-            return now.replace(day=int(days / 2))
-        elif cnt == 2:
-            return now.replace(day=days)
-        raise ValueError(f"invalid date_string, got {date_string!r}")
-
-    if intv == RespIntv.DAILY:
-        return dt.strptime(date_string, "%Y%m%d")
-
-    raise ValueError(f"invalid interval, got {intv!r}")
-
-
 class Ecos:
     """ECOS Open API"""
 
-    def __init__(self, api_key: str = None, api_url: str = None) -> None:
-        self.api_key = api_key if api_key else "sample"
-        self.api_url = api_url if api_url else "http://ecos.bok.or.kr/api/"
+    def __init__(self, api_key: str = None, api_url: str = None, inc: int = 100_000, delay: float = 0.0) -> None:
+        self.api_key: str = api_key if api_key else "sample"
+        self.api_url: str = api_url if api_url else "http://ecos.bok.or.kr/api/"
+        self.inc: int = inc
+        self.delay: float = delay
 
-    def _api_call(self, args: dict) -> dict | bytes:
-        req_url = f"{self.api_url}{'/'.join(args.values())}"
-        resp = requests.get(req_url)
-        if args.get("요청유형", "") == RespType.JSON:
+    def raise_for_error(self, parsed: dict, args: dict) -> None:
+        has_error = parsed.get("RESULT", {})
+        if has_error:
+            import json
+
+            logger.error(f"args: {json.dumps(args, ensure_ascii=False)}")
+            raise ValueError(f"({has_error.get('CODE')}) {has_error.get('MESSAGE')}")
+
+    def _api_call(self, args: dict, limit: int = None) -> dict:
+        global session
+        if session is None:
+            session = requests.Session()
+
+        apiname = args["서비스명"]
+        inc = 10 if self.api_key == "sample" else self.inc
+        idx_start = 1
+        idx_end = min(limit, inc) if limit else inc
+
+        result = []
+        while True:
+            args["요청시작건수"] = f"{idx_start}"
+            args["요청종료건수"] = f"{idx_end}"
+            resp = session.get(f"{self.api_url}{'/'.join(args.values())}")
             parsed = resp.json()
-            result = parsed.get("RESULT", {})
-            if result:
-                logger.error(args)
-                raise ValueError(f"({result.get('CODE')}) {result.get('MESSAGE')}")
-            return parsed
-        return resp.content
+            self.raise_for_error(parsed, args)
+
+            parsed_name = parsed.get(apiname, {})
+            total = parsed_name.get("list_total_count", 0)
+            row = parsed_name.get("row", [])
+            result += row
+            length = len(result)
+
+            if not row or self.api_key == "sample":
+                break
+            elif not limit:
+                if length >= total:
+                    break
+            elif length >= limit:
+                break
+            idx_start += inc
+            idx_end += inc
+            if self.delay:
+                time.sleep(self.delay)
+        return result
 
     def stat_table_list(
         self,
         stat_code: str = "",
-        row_from: int = 1,
-        row_to: int = 100_000,
-        resp_type: str = RespType.JSON,
-        resp_lang: str = RespLang.KR,
-        raw: bool = False,
-    ) -> dict | bytes:
-        """서비스 통계 목록 조회
-
-        Args:
-            stat_code (str, optional): 통계표코드. Defaults to "".
-            row_from (int, optional): 요청시작건수. Defaults to 1.
-            row_to (int, optional): 요청종료견수. Defaults to 100_000.
-            resp_type (str, optional): 요청유형. Defaults to RespType.JSON.
-            resp_lang (str, optional): 언어구분. Defaults to RespLang.KR.
-            raw (bool, optional): Raw데이터여부. Defaults to False.
-
-        Returns:
-            dict | bytes: 딕셔너리(JSON 요청 시), 또는 바이트(XML 요청 시)
-        """
-        sname = ServName.STAT_TABLE_LIST
+        limit: int = None,
+        lang: Literal["kr", "en"] = "kr",
+    ) -> list[dict]:
+        """서비스 통계 목록"""
+        apiname = API_NAME.STAT_TABLE_LIST
         args = {
-            "서비스명": f"{sname}",
-            "인증키": self.api_key,
-            "요청유형": f"{resp_type}",
-            "언어구분": f"{resp_lang}",
-            "요청시작건수": f"{row_from}",
-            "요청종료건수": f"{row_to}",
+            "서비스명": f"{apiname}",
+            "인증키": f"{self.api_key}",
+            "요청유형": "json",
+            "언어구분": f"{lang}",
+            "요청시작건수": "",
+            "요청종료건수": "",
             "통계표코드": f"{stat_code}",
         }
-        result = self._api_call(args)
-        return result.get(f"{sname}", {}).get("row", []) if not raw and resp_type == RespType.JSON else result
+        return self._api_call(args, limit)
 
     def stat_word(
         self,
         stat_word: str,
-        row_from: int = 1,
-        row_to: int = 100_000,
-        resp_type: str = RespType.JSON,
-        resp_lang: str = RespLang.KR,
-        raw: bool = False,
-    ) -> dict | bytes:
-        """통계용어사전
-
-        Args:
-            stat_word (str): 용어
-            row_from (int, optional): 요청시작건수. Defaults to 1.
-            row_to (int, optional): 요청종료견수. Defaults to 100_000.
-            resp_type (str, optional): 요청유형. Defaults to RespType.JSON.
-            resp_lang (str, optional): 언어구분. Defaults to RespLang.KR.
-            raw (bool, optional): Raw데이터여부. Defaults to False.
-
-        Returns:
-            dict | bytes: 딕셔너리(JSON 요청 시), 또는 바이트(XML 요청 시)
-        """
-        sname = ServName.STAT_WORD
+        limit: int = None,
+        lang: Literal["kr", "en"] = "kr",
+    ) -> list[dict]:
+        """통계용어사전"""
+        apiname = API_NAME.STAT_WORD
         args = {
-            "서비스명": f"{sname}",
-            "인증키": self.api_key,
-            "요청유형": f"{resp_type}",
-            "언어구분": f"{resp_lang}",
-            "요청시작건수": f"{row_from}",
-            "요청종료건수": f"{row_to}",
+            "서비스명": f"{apiname}",
+            "인증키": f"{self.api_key}",
+            "요청유형": "json",
+            "언어구분": f"{lang}",
+            "요청시작건수": "",
+            "요청종료건수": "",
             "용어": f"{stat_word}",
         }
-        result = self._api_call(args)
-        return result.get(f"{sname}", {}).get("row", []) if not raw and resp_type == RespType.JSON else result
+        return self._api_call(args, limit)
 
     def stat_item_list(
         self,
         stat_code: str,
-        row_from: int = 1,
-        row_to: int = 100_000,
-        resp_type: str = RespType.JSON,
-        resp_lang: str = RespLang.KR,
-        raw: bool = False,
-    ) -> dict | bytes:
-        """통계 세부항목 목록
-
-        Args:
-            stat_code (str, optional): 통계표코드. Defaults to "".
-            row_from (int, optional): 요청시작건수. Defaults to 1.
-            row_to (int, optional): 요청종료견수. Defaults to 100_000.
-            resp_type (str, optional): 요청유형. Defaults to RespType.JSON.
-            resp_lang (str, optional): 언어구분. Defaults to RespLang.KR.
-            raw (bool, optional): Raw데이터여부. Defaults to False.
-
-        Returns:
-            dict | bytes: 딕셔너리(JSON 요청 시), 또는 바이트(XML 요청 시)
-        """
-        sname = ServName.STAT_ITEM_LIST
+        limit: int = None,
+        lang: Literal["kr", "en"] = "kr",
+    ) -> list[dict]:
+        """통계 세부항목 목록"""
+        apiname = API_NAME.STAT_ITEM_LIST
         args = {
-            "서비스명": f"{sname}",
-            "인증키": self.api_key,
-            "요청유형": f"{resp_type}",
-            "언어구분": f"{resp_lang}",
-            "요청시작건수": f"{row_from}",
-            "요청종료건수": f"{row_to}",
-            "통계표코드": stat_code,
+            "서비스명": f"{apiname}",
+            "인증키": f"{self.api_key}",
+            "요청유형": "json",
+            "언어구분": f"{lang}",
+            "요청시작건수": "",
+            "요청종료건수": "",
+            "통계표코드": f"{stat_code}",
         }
-        result = self._api_call(args)
-        return result.get(f"{sname}", {}).get("row", []) if not raw and resp_type == RespType.JSON else result
+        return self._api_call(args, limit)
 
     def stat_search(
         self,
         stat_code: str,
-        intv: str = RespIntv.DAILY,
-        search_from: str = "",
-        search_to: str = "",
+        freq: Literal["A", "S", "Q", "M", "SM", "D"],
         item_code1: str = "?",
         item_code2: str = "?",
         item_code3: str = "?",
         item_code4: str = "?",
-        row_from: int = 1,
-        row_to: int = 100_000,
-        resp_type: str = RespType.JSON,
-        resp_lang: str = RespLang.KR,
-        raw: bool = False,
-    ) -> list | dict | bytes:
-        """통계 조회 조건 설정
+        limit: int = None,
+        start: str = "",
+        end: str = "",
+        lang: Literal["kr", "en"] = "kr",
+    ) -> list[dict]:
+        """통계 조회 조건 설정"""
+        if limit:
+            start, end = "", ""
+            now = dt.now()
+            if freq == FREQ.ANNUAL:
+                end_dt = now - relativedelta(years=1)
+                start_dt = end_dt - relativedelta(years=limit - 1)
+            elif freq == FREQ.SEMMI_ANNUAL:
+                end_dt = (dt(now.year, 1, 1) if now.month <= 6 else dt(now.year, 7, 1)) - relativedelta(months=6)
+                start_dt = end_dt - relativedelta(months=(limit - 1) * 6)
+            elif freq == FREQ.QUARTERLY:
+                quarter = (now.month - 1) // 3 + 1
+                end_dt = dt(now.year, (quarter - 1) * 3, 1)
+                start_dt = end_dt - relativedelta(months=(limit - 1) * 3)
+            elif freq == FREQ.MONTHLY:
+                end_dt = dt(now.year, now.month - 1, 1)
+                start_dt = end_dt - relativedelta(months=(limit - 1))
+            elif freq == FREQ.SEMMI_MONTHLY:
+                _, now_days = monthrange(now.year, now.month)
+                q, r = divmod(limit - 1, 2)
+                if now.day >= int(now_days / 2):
+                    end_dt = dt(now.year, now.month, 1)
+                    start_dt = end_dt - relativedelta(months=q)
+                    if r:
+                        start_dt -= relativedelta(days=1)
+                else:
+                    end_dt = dt(now.year, now.month, 1) - relativedelta(days=1)
+                    start_dt = end_dt - relativedelta(months=q)
+                    if r:
+                        start_dt -= relativedelta(day=1)
+            elif freq == FREQ.DAILY:
+                end_dt = dt(now.year, now.month, now.day - 1)
+                start_dt = end_dt - relativedelta(days=(limit - 1))
+            else:
+                raise ValueError(f"invalid freq, got {freq=}")
+            start = to_date_string(start_dt, freq)
+            end = to_date_string(end_dt, freq)
+        elif not start or not end:
+            raise ValueError(f"You should use the limit parameter, or both the start and end parameters, got {limit=}, {start=}, {end=}")
 
-        Args:
-            stat_code (str): 통계표코드
-            intv (str, optional): 주기. Defaults to RespIntv.DAILY.
-            search_from (str, optional): 검색시작일자. Defaults to "".
-            search_to (str, optional): 검색종료일자. Defaults to "".
-            item_code1 (str, optional): 통계항목코드1. Defaults to "?".
-            item_code2 (str, optional): 통계항목코드2. Defaults to "?".
-            item_code3 (str, optional): 통계항목코드3. Defaults to "?".
-            item_code4 (str, optional): 통계항목코드4. Defaults to "?".
-            row_from (int, optional): 요청시작건수. Defaults to 1.
-            row_to (int, optional): 요청종료견수. Defaults to 100_000.
-            resp_type (str, optional): 요청유형. Defaults to RespType.JSON.
-            resp_lang (str, optional): 언어구분. Defaults to RespLang.KR.
-            raw (bool, optional): Raw데이터여부. Defaults to False.
-
-        Returns:
-            dict | bytes: 딕셔너리(JSON 요청 시), 또는 바이트(XML 요청 시)
-        """
-
-        if not search_to:
-            search_to = dt_to_str(dt.now(), intv)
-        if not search_from:
-            search_from = dt_to_str(dt.fromtimestamp(0), intv)
-        sname = ServName.STAT_SEARCH
+        apiname = API_NAME.STAT_SEARCH
         args = {
-            "서비스명": f"{sname}",
+            "서비스명": f"{apiname}",
             "인증키": f"{self.api_key}",
-            "요청유형": f"{resp_type}",
-            "언어구분": f"{resp_lang}",
-            "요청시작건수": f"{row_from}",
-            "요청종료건수": f"{row_to}",
+            "요청유형": "json",
+            "언어구분": f"{lang}",
+            "요청시작건수": "",
+            "요청종료건수": "",
             "통계표코드": f"{stat_code}",
-            "주기": f"{intv}",
-            "검색시작일자": f"{search_from}",
-            "검색종료일자": f"{search_to}",
+            "주기": f"{freq}",
+            "검색시작일자": f"{start}",
+            "검색종료일자": f"{end}",
             "통계항목코드1": f"{item_code1}",
             "통계항목코드2": f"{item_code2}",
             "통계항목코드3": f"{item_code3}",
             "통계항목코드4": f"{item_code4}",
         }
-        result = self._api_call(args)
-        return result.get(f"{sname}", {}).get("row", []) if not raw and resp_type == RespType.JSON else result
+        return self._api_call(args, limit)
 
     def key_stat_list(
         self,
-        row_from: int = 1,
-        row_to: int = 100_000,
-        resp_type: str = RespType.JSON,
-        resp_lang: str = RespLang.KR,
-        raw: bool = False,
-    ) -> list | dict | bytes:
-        """100대 통계지표
-
-        Args:
-            row_from (int, optional): 요청시작건수. Defaults to 1.
-            row_to (int, optional): 요청종료견수. Defaults to 100_000.
-            resp_type (str, optional): 요청유형. Defaults to RespType.JSON.
-            resp_lang (str, optional): 언어구분. Defaults to RespLang.KR.
-            raw (bool, optional): Raw데이터여부. Defaults to False.
-
-        Returns:
-            dict | bytes: 딕셔너리(JSON 요청 시), 또는 바이트(XML 요청 시)
-        """
-        sname = ServName.KEY_STAT_LIST
+        limit: int = None,
+        lang: Literal["kr", "en"] = "kr",
+    ) -> list[dict]:
+        """100대 통계지표"""
+        apiname = API_NAME.KEY_STAT_LIST
         args = {
-            "서비스명": f"{ServName.KEY_STAT_LIST}",
+            "서비스명": f"{apiname}",
             "인증키": f"{self.api_key}",
-            "요청유형": f"{resp_type}",
-            "언어구분": f"{resp_lang}",
-            "요청시작건수": f"{row_from}",
-            "요청종료건수": f"{row_to}",
+            "요청유형": "json",
+            "언어구분": f"{lang}",
+            "요청시작건수": "",
+            "요청종료건수": "",
         }
-        result = self._api_call(args)
-        return result.get(f"{sname}", {}).get("row", []) if not raw and resp_type == RespType.JSON else result
+        return self._api_call(args, limit)
 
     def stat_meta(
         self,
         item_name: str,
-        row_from: int = 1,
-        row_to: int = 100_000,
-        resp_type: str = RespType.JSON,
-        resp_lang: str = RespLang.KR,
-        raw: bool = False,
-    ) -> list | dict | bytes:
-        """통계메타DB
-
-        Args:
-            item_name (str): 데이터명
-            row_from (int, optional): 요청시작건수. Defaults to 1.
-            row_to (int, optional): 요청종료견수. Defaults to 100_000.
-            resp_type (str, optional): 요청유형. Defaults to RespType.JSON.
-            resp_lang (str, optional): 언어구분. Defaults to RespLang.KR.
-            raw (bool, optional): Raw데이터여부. Defaults to False.
-
-        Returns:
-            dict | bytes: 딕셔너리(JSON 요청 시), 또는 바이트(XML 요청 시)
-        """
-        sname = ServName.STAT_META
+        limit: int = None,
+        lang: Literal["kr", "en"] = "kr",
+    ) -> list[dict]:
+        """통계메타DB"""
+        apiname = API_NAME.STAT_META
         args = {
-            "서비스명": f"{sname}",
+            "서비스명": f"{apiname}",
             "인증키": f"{self.api_key}",
-            "요청유형": f"{resp_type}",
-            "언어구분": f"{resp_lang}",
-            "요청시작건수": f"{row_from}",
-            "요청종료건수": f"{row_to}",
+            "요청유형": "json",
+            "언어구분": f"{lang}",
+            "요청시작건수": "",
+            "요청종료건수": "",
             "데이터명": f"{item_name}",
         }
-        result = self._api_call(args)
-        return result.get(f"{sname}", {}).get("row", []) if not raw and resp_type == RespType.JSON else result
+        return self._api_call(args, limit)
