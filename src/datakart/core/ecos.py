@@ -128,7 +128,7 @@ class Ecos:
 
     def __init__(self, api_key: str = None, api_url: str = None, inc: int = 100_000, delay: float = 0.0) -> None:
         self.api_key: str = api_key if api_key else "sample"
-        self.api_url: str = api_url if api_url else "http://ecos.bok.or.kr/api/"
+        self.api_url: str = api_url if api_url else "https://ecos.bok.or.kr/api/"
         self.inc: int = inc
         self.delay: float = delay
 

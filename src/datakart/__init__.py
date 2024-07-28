@@ -1,5 +1,6 @@
 from .core.datagokr import Datagokr
 from .core.ecos import Ecos
+from .core.fss import Fss
 from .core.jusogokr import Jusogokr
 from .core.kakao import Kakao
 from .core.naver import Naver
@@ -9,6 +10,7 @@ from .core.sgis import Sgis
 __all__ = [
     "Datagokr",
     "Ecos",
+    "Fss",
     "Jusogokr",
     "Kakao",
     "Naver",
@@ -16,4 +18,4 @@ __all__ = [
     "Sgis",
 ]
 
-__version__ = "1.8.4"
+__version__ = "1.9.1"
