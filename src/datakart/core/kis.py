@@ -15,76 +15,76 @@ API_URL_REAL = "https://openapi.koreainvestment.com:9443"
 API_URL_MOCK = "https://openapivts.koreainvestment.com:29443"
 KIS_DIR = Path.home() / ".kis"
 M_EXCD = {
-    "kospi": [  # 코스피
+    "kospi": (  # 코스피
         "kospi_code.mst.zip",
         "kospi_code.mst",
         "https://new.real.download.dws.co.kr/common/master/kospi_code.mst.zip",
-    ],
-    "kosdaq": [  # 코스닥
+    ),
+    "kosdaq": (  # 코스닥
         "kosdaq_code.mst.zip",
         "kosdaq_code.mst",
         "https://new.real.download.dws.co.kr/common/master/kosdaq_code.mst.zip",
-    ],
-    "konex": [  # 코넥스
+    ),
+    "konex": (  # 코넥스
         "konex_code.mst.zip",
         "konex_code.mst",
         "https://new.real.download.dws.co.kr/common/master/konex_code.mst.zip",
-    ],
-    "nas": [  # 나스닥
+    ),
+    "nas": (  # 나스닥
         "nasmst.cod.zip",
         "nasmst.cod",
         "https://new.real.download.dws.co.kr/common/master/nasmst.cod.zip",
-    ],
-    "nys": [  # 뉴욕
+    ),
+    "nys": (  # 뉴욕
         "nysmst.cod.zip",
         "nysmst.cod",
         "https://new.real.download.dws.co.kr/common/master/nysmst.cod.zip",
-    ],
-    "ams": [  # 아멕스
+    ),
+    "ams": (  # 아멕스
         "amsmst.cod.zip",
         "amsmst.cod",
         "https://new.real.download.dws.co.kr/common/master/amsmst.cod.zip",
-    ],
-    "shs": [  # 상해
+    ),
+    "shs": (  # 상해
         "shsmst.cod.zip",
         "shsmst.cod",
         "https://new.real.download.dws.co.kr/common/master/shsmst.cod.zip",
-    ],
-    "shi": [  # 상해지수
+    ),
+    "shi": (  # 상해지수
         "shimst.cod.zip",
         "shimst.cod",
         "https://new.real.download.dws.co.kr/common/master/shimst.cod.zip",
-    ],
-    "szs": [  # 심천
+    ),
+    "szs": (  # 심천
         "szsmst.cod.zip",
         "szsmst.cod",
         "https://new.real.download.dws.co.kr/common/master/szsmst.cod.zip",
-    ],
-    "szi": [  # 심천지수
+    ),
+    "szi": (  # 심천지수
         "szimst.cod.zip",
         "szimst.cod",
         "https://new.real.download.dws.co.kr/common/master/szimst.cod.zip",
-    ],
-    "tse": [  # 도쿄
+    ),
+    "tse": (  # 도쿄
         "tsemst.cod.zip",
         "tsemst.cod",
         "https://new.real.download.dws.co.kr/common/master/tsemst.cod.zip",
-    ],
-    "hks": [  # 홍콩
+    ),
+    "hks": (  # 홍콩
         "hksmst.cod.zip",
         "hksmst.cod",
         "https://new.real.download.dws.co.kr/common/master/hksmst.cod.zip",
-    ],
-    "hnx": [  # 하노이
+    ),
+    "hnx": (  # 하노이
         "hnxmst.cod.zip",
         "hnxmst.cod",
         "https://new.real.download.dws.co.kr/common/master/hnxmst.cod.zip",
-    ],
-    "hsx": [  # 호치민
+    ),
+    "hsx": (  # 호치민
         "hsxmst.cod.zip",
         "hsxmst.cod",
         "https://new.real.download.dws.co.kr/common/master/hsxmst.cod.zip",
-    ],
+    ),
 }
 T_EXCD_SYMBOL = Literal[
     "kospi",  # 코스피
@@ -211,7 +211,7 @@ def fetch_kline_overseas(
     }
     params = {
         "AUTH": "",  # 사용자권한정보
-        "EXCD": excd,  # 거래소코드
+        "EXCD": excd.upper(),  # 거래소코드
         "SYMB": symbol,  # 종목코드
         "GUBN": (
             "0" if timeframe == "D" else "1" if timeframe == "W" else "2" if timeframe == "M" else ""
@@ -226,28 +226,32 @@ def fetch_kline_overseas(
 
 
 class Kis:
-    def __init__(self, api_key: str, api_sec: str, mock: bool = True) -> None:
+    def __init__(self, api_key: str, api_sec: str, mock: bool = False) -> None:
         self.api_key = api_key
         self.api_sec = api_sec
         self.mock = mock
 
-    @property
-    def access_token(self) -> str:
-        fullpath = KIS_DIR / "access_token.json"
-        if not fullpath.is_file():
-            fetch_access_token(api_key=self.api_key, api_sec=self.api_sec, mock=self.mock)
-
-        with open(fullpath) as fp:
-            parsed: dict = json.load(fp)
-        date_string = parsed.get("access_token_token_expired")
-        expires = dt.fromisoformat(date_string).timestamp() - 60 * 60
-        if dt.now().timestamp() < expires:
-            return f'{parsed.get("token_type", "")} {parsed.get("access_token", "")}'
-
-        fetch_access_token(api_key=self.api_key, api_sec=self.api_sec, mock=self.mock)
-        with open(fullpath) as fp:
-            parsed: dict = json.load(fp)
-        return f'{parsed.get("token_type", "")} {parsed.get("access_token", "")}'
+    @staticmethod
+    def get_excd() -> tuple:
+        return (
+            ("kospi", "코스피"),
+            ("kosdaq", "코스닥"),
+            ("konex", "코넥스"),
+            ("nas", "나스닥"),
+            ("nys", "뉴욕"),
+            ("ams", "아멕스"),
+            ("shs", "상해"),
+            ("shi", "상해지수"),
+            ("szs", "심천"),
+            ("szi", "심천지수"),
+            ("tse", "도쿄"),
+            ("hks", "홍콩"),
+            ("hnx", "하노이"),
+            ("hsx", "호치민"),
+            ("baq", "나스닥(주간)"),
+            ("bay", "뉴욕(주간)"),
+            ("baa", "아멕스(주간)"),
+        )
 
     @staticmethod
     def get_symbols(excd: T_EXCD_SYMBOL, force_fetch: bool = False) -> list[dict]:
@@ -311,6 +315,24 @@ class Kis:
                         }
                     )
             return result
+
+    @property
+    def access_token(self) -> str:
+        fullpath = KIS_DIR / "access_token.json"
+        if not fullpath.is_file():
+            fetch_access_token(api_key=self.api_key, api_sec=self.api_sec, mock=self.mock)
+
+        with open(fullpath) as fp:
+            parsed: dict = json.load(fp)
+        date_string = parsed.get("access_token_token_expired")
+        expires = dt.fromisoformat(date_string).timestamp() - 60 * 60
+        if dt.now().timestamp() < expires:
+            return f'{parsed.get("token_type", "")} {parsed.get("access_token", "")}'
+
+        fetch_access_token(api_key=self.api_key, api_sec=self.api_sec, mock=self.mock)
+        with open(fullpath) as fp:
+            parsed: dict = json.load(fp)
+        return f'{parsed.get("token_type", "")} {parsed.get("access_token", "")}'
 
     def get_kline(
         self,
@@ -393,7 +415,7 @@ class Kis:
         end: str = None,
         limit: int = 100,
         adj_price=True,
-        sleep: float = 0.1,
+        sleep: float = 1.0,
     ) -> list[dict]:
         if start and end:
             start_dt = dt.strptime(start, "%Y%m%d")
