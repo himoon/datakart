@@ -79,7 +79,8 @@ class Sgis:
 
         gdf_resp: gpd.GeoDataFrame = gpd.read_file(resp.content)
         gdf_resp.set_crs("EPSG:5179", allow_override=True, inplace=True)  # 좌표계: UTM-K "EPSG:5179"
-        return gdf_resp.drop(columns=["x", "y"]).to_json(drop_id=True, to_wgs84=True, separators=(",", ":"))
+        gdf_filter: gpd.GeoDataFrame = gdf_resp.filter(["adm_cd", "adm_nm", "addr_en", "geometry"])
+        return gdf_filter.to_json(drop_id=True, to_wgs84=True, separators=(",", ":"), ensure_ascii=False)  # 좌표계: WGS84 "EPSG:4326"
 
     def geocode_wgs84(self, address: str, page: int = 0, limit: int = 5, session: requests.Session = None) -> list[dict]:
         """입력된 주소 위치 제공 API(좌표계: WGS84 "EPSG:4326")
