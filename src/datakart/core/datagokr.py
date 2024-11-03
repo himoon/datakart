@@ -86,10 +86,8 @@ class Datagokr:
                 "pageNo": f"{page}",
             }
             resp = requests.get(url, params=params)
-            try:
-                return resp.json()
-            except json.JSONDecodeError:
-                return xmltodict.parse(resp.content)
+            resp.raise_for_status()
+            return xmltodict.parse(resp.content)
 
         page: int = 1
         total_cnt: int = None
@@ -126,10 +124,8 @@ class Datagokr:
                 "pageNo": f"{page}",
             }
             resp = requests.get(url, params=params)
-            try:
-                return resp.json()
-            except json.JSONDecodeError:
-                return xmltodict.parse(resp.content)
+            resp.raise_for_status()
+            return xmltodict.parse(resp.content)
 
         page: int = 1
         total_cnt: int = None
