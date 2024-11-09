@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import logging
+import pathlib
 import time
 from typing import Literal
 
@@ -40,6 +42,13 @@ class Sgis:
         self._timeout = result.get("accessTimeout", 0)
         self._token = result.get("accessToken", "")
         return result
+
+    @staticmethod
+    def hadm_codes() -> pathlib.Path:
+        # https://sgis.kostat.go.kr/view/board/faqView?post_no=11
+        path_to_json = pathlib.Path(__file__).parent / "assets" / "adm_codes_2306.json"
+        with open(path_to_json, "r", encoding="utf-8") as fp:
+            return json.load(fp)
 
     def hadm_area(
         self,
