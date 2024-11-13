@@ -11,6 +11,13 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+class AuthenticationError(Exception):
+    """[-401] 인증정보가 존재하지 않습니다"""
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
 class Sgis:
     """통계지리정보서비스 SGIS"""
 
@@ -18,17 +25,24 @@ class Sgis:
         self.api_key: str = api_key
         self.api_sec: str = api_sec
 
-    @staticmethod
-    def raise_for_err_cd(parsed: dict) -> None:
-        err_cd = parsed.get("errCd", 0)
-        if err_cd:
-            raise ValueError(f"[{err_cd}] {parsed.get('errMsg', 0)}")
+    @property
+    def timeout(self) -> float:
+        if hasattr(self, "_timeout"):
+            return int(self._timeout) / 1000
+        return 0.0
 
     @property
     def access_token(self) -> str:
-        if not hasattr(self, "_token") or int(self._timeout) / 1000 - 10 < time.time():
+        if not hasattr(self, "_token") or self.timeout - 60 * 60 < time.time():
             self.auth()
         return self._token
+
+    def raise_for_err_cd(self, parsed: dict) -> None:
+        err_cd, err_msg = parsed.get("errCd", 0), parsed.get("errMsg", "")
+        if f"{err_cd}" == "-401":
+            raise AuthenticationError(f"[{err_cd}] {err_msg}")
+        if err_cd:
+            raise ValueError(f"[{err_cd}] {err_msg}")
 
     def auth(self) -> dict:
         # https://sgis.kostat.go.kr/developer/html/newOpenApi/api/dataApi/basics.html#auth
@@ -111,12 +125,24 @@ class Sgis:
             pagenum=f"{page}",
             resultcount=f"{limit}",
         )
-        resp = session.get(url, params=params) if session else requests.get(url, params=params)
-        parsed: dict = resp.json()
-        self.raise_for_err_cd(parsed)
-
-        result: dict = parsed.get("result", {})
-        return result.get("resultdata", [])
+        cnt = 0
+        while cnt < 200:
+            try:
+                resp = session.get(url, params=params) if session else requests.get(url, params=params)
+                parsed: dict = resp.json()
+                self.raise_for_err_cd(parsed)
+                result: dict = parsed.get("result", {})
+                return result.get("resultdata", [])
+            except AuthenticationError as err:
+                logger.warning(f"{err}")
+                time.sleep(10)
+                self.auth()
+            except ValueError as err:
+                logger.warning(f"{err}")
+                time.sleep(10)
+            finally:
+                cnt += 1
+        raise ValueError(f"invalid cnt, {cnt=}")
 
     def geocode_utmk(self, address: str, page: int = 0, limit: int = 5, session: requests.Session = None) -> list[dict]:
         """입력된 주소 위치 제공 API(좌표계: UTM-K "EPSG:5179")
