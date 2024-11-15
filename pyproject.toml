@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "datakart"
-version = "1.16"
+version = "1.17"
 authors = [
   { name="HYUNIL MOON", email="hyunil.moon@gmail.com" },
 ]
@@ -12,7 +12,7 @@ description = "datakart package for fetching data"
 readme = "README.md"
 keywords = ["datakart", "data", "kart", "ECOS", "FSS", "SGIS", "NAVER", "Kakao", "K-data", "ecos.bok.or.kr", "fss.or.kr", "data.go.kr", "kostat.go.kr", "juso.go.kr"]
 requires-python = ">=3.7"
-dependencies = ["python-dateutil", "requests>=2,<3", "xmltodict"]
+dependencies = ["python-dateutil", "ratelimit", "requests>=2,<3", "xmltodict"]
 license = {file = "LICENSE"}
 classifiers = [
     "Programming Language :: Python :: 3",

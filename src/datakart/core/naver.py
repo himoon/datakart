@@ -4,6 +4,7 @@ import logging
 from typing import Literal
 
 import requests
+from ratelimit import limits, sleep_and_retry
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,8 @@ class Naver:
     def headers(self) -> dict:
         return {"X-Naver-Client-Id": self.api_key, "X-Naver-Client-Secret": self.api_sec}
 
+    @sleep_and_retry
+    @limits(calls=8, period=1)
     def adult(self, query: str) -> dict:
         """성인 검색어 판별 결과 조회"""
         if query := query.strip():
@@ -41,6 +44,8 @@ class Naver:
             return resp.json()
         return {}
 
+    @sleep_and_retry
+    @limits(calls=8, period=1)
     def blog(self, query: str, display: int = 10, start: int = 1, sort: Literal["sim", "date"] = "sim") -> dict:
         """블로그 검색 결과 조회"""
         if query := query.strip():
@@ -52,6 +57,8 @@ class Naver:
             return resp.json()
         return {}
 
+    @sleep_and_retry
+    @limits(calls=8, period=1)
     def local(self, query: str, display: int = 5, start: int = 1, sort: Literal["random", "comment"] = "random") -> dict:
         """지역 검색 결과 조회"""
         if query := query.strip():
@@ -60,9 +67,17 @@ class Naver:
             params = {"query": query, "display": f"{display}", "start": f"{start}", "sort": f"{sort}"}
             resp = requests.get(url, params=params, headers=self.headers)
             resp.raise_for_status()
-            return resp.json()
+            parsed: dict = resp.json()
+            for idx, item in enumerate(parsed.get("items", [])):
+                if mapx := item.get("mapx"):
+                    parsed["items"][idx]["mapx"] = float(".".join((mapx[:3], mapx[3:])))
+                if mapy := item.get("mapy"):
+                    parsed["items"][idx]["mapy"] = float(".".join((mapy[:2], mapy[2:])))
+            return parsed
         return {}
 
+    @sleep_and_retry
+    @limits(calls=8, period=1)
     def shop(
         self,
         query: str,
@@ -89,6 +104,8 @@ class Naver:
             return resp.json()
         return {}
 
+    @sleep_and_retry
+    @limits(calls=8, period=1)
     def lab_search(
         self,
         start_date: str,
@@ -115,6 +132,8 @@ class Naver:
         resp.raise_for_status()
         return resp.json()
 
+    @sleep_and_retry
+    @limits(calls=8, period=1)
     def lab_shopping(
         self,
         start_date: str,

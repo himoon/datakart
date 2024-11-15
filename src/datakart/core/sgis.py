@@ -125,8 +125,7 @@ class Sgis:
             pagenum=f"{page}",
             resultcount=f"{limit}",
         )
-        cnt = 0
-        while cnt < 200:
+        for cnt in range(200):
             try:
                 resp = session.get(url, params=params) if session else requests.get(url, params=params)
                 parsed: dict = resp.json()
@@ -140,8 +139,6 @@ class Sgis:
             except ValueError as err:
                 logger.warning(f"{err}")
                 time.sleep(10)
-            finally:
-                cnt += 1
         raise ValueError(f"invalid cnt, {cnt=}")
 
     def geocode_utmk(self, address: str, page: int = 0, limit: int = 5, session: requests.Session = None) -> list[dict]:
