@@ -70,9 +70,9 @@ class Naver:
             parsed: dict = resp.json()
             for idx, item in enumerate(parsed.get("items", [])):
                 if mapx := item.get("mapx"):
-                    parsed["items"][idx]["mapx"] = float(".".join((mapx[:3], mapx[3:])))
+                    parsed["items"][idx]["lonx"] = float(".".join((mapx[:3], mapx[3:])))
                 if mapy := item.get("mapy"):
-                    parsed["items"][idx]["mapy"] = float(".".join((mapy[:2], mapy[2:])))
+                    parsed["items"][idx]["laty"] = float(".".join((mapy[:2], mapy[2:])))
             return parsed
         return {}
 
