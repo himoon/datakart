@@ -6,6 +6,7 @@ from enum import Enum
 
 import requests
 import xmltodict
+from ratelimit import limits, sleep_and_retry
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,8 @@ class Datagokr:
             raise ValueError(f"invalid api_key, got {api_key!r}")
         self.api_key = api_key
 
+    @sleep_and_retry
+    @limits(calls=25, period=1)
     def lawd_code(self, region: str = None, n_rows: int = 1000) -> list[dict]:
         # https://www.data.go.kr/data/15077871/openapi.do
         def _api_call(region: str, n_rows: int, page: int) -> dict:
@@ -74,6 +77,8 @@ class Datagokr:
             else:
                 raise ValueError(f"invalid response, got {parsed!r}")
 
+    @sleep_and_retry
+    @limits(calls=25, period=1)
     def apt_trade(self, lawd_code: str, deal_ym: str, n_rows: int = 9999) -> list[dict]:
         # https://www.data.go.kr/data/15126469/openapi.do
         def _api_call(lawd_code: str, deal_ym: str, n_rows: int, page: int) -> dict:
@@ -112,6 +117,8 @@ class Datagokr:
             else:
                 raise ValueError(f'[{result_code}] {header.get("resultMsg","")}')
 
+    @sleep_and_retry
+    @limits(calls=25, period=1)
     def apt_trade_detailed(self, lawd_code: str, deal_ym: str, n_rows: int = 1000) -> list[dict]:
         # https://www.data.go.kr/data/15126468/openapi.do
         def _api_call(lawd_code: str, deal_ym: str, n_rows: int, page: int) -> dict:

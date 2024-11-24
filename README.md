@@ -1,11 +1,26 @@
 # datakart
 
-## Python Packaging User Guide
-[https://packaging.python.org/en/latest/tutorials/packaging-projects/#]
-```
-python3 -m pip install --upgrade pip build
-python3 -m build
+**`datakart`**는 다양한 공공 및 민간 데이터 API를 간편하게 활용할 수 있도록 설계된 Python 패키지입니다. 공공데이터포털, 통계지리정보시스템, 도로명주소지원서비스, 한국은행, 금융감독원, 네이버, 카카오 등 다양한 데이터 소스와의 통합을 제공합니다.
 
-python3 -m pip install --upgrade twine
-python3 -m twine upload dist/*
+## 지원 API 목록
+
+- **공공데이터포털**
+- **통계지리정보시스템**
+- **도로명주소지원서비스**
+- **한국은행 `ECOS`**
+- **금융감독원 `금융상품 한눈에`**
+- **네이버 서비스 API**
+- **네이버 검색광고 API**
+- **카카오 API**
+
+## 설치 방법
+
+`datakart`는 `pip`를 통해 간단히 설치할 수 있습니다. 터미널에서 다음 명령어를 입력하세요:
+
+```shell
+pip install -U datakart
 ```
+
+## 문의
+
+사용 중 문제가 발생하거나 개선 사항이 있으면 [Issues](https://github.com/himoon/datakart/issues)에 등록해 주세요.
