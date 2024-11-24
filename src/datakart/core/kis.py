@@ -322,7 +322,7 @@ class Kis:
         if not fullpath.is_file():
             fetch_access_token(api_key=self.api_key, api_sec=self.api_sec, mock=self.mock)
 
-        with open(fullpath) as fp:
+        with open(fullpath, encoding="utf-8") as fp:
             parsed: dict = json.load(fp)
         date_string = parsed.get("access_token_token_expired")
         expires = dt.fromisoformat(date_string).timestamp() - 60 * 60
@@ -330,7 +330,7 @@ class Kis:
             return f'{parsed.get("token_type", "")} {parsed.get("access_token", "")}'
 
         fetch_access_token(api_key=self.api_key, api_sec=self.api_sec, mock=self.mock)
-        with open(fullpath) as fp:
+        with open(fullpath, encoding="utf-8") as fp:
             parsed: dict = json.load(fp)
         return f'{parsed.get("token_type", "")} {parsed.get("access_token", "")}'
 

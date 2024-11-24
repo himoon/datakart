@@ -11,6 +11,6 @@ df_raw.columns = ["id", "name_kr", "pid", "level"]
 df_raw.info()
 df_raw.sort_values(["id"], inplace=True)
 
-with open(WORK_DIR / "naver_ad_biztp.json", "w") as fp:
+with open(WORK_DIR / "naver_ad_biztp.json", "w", encoding="utf-8") as fp:
     json.dump(df_raw.to_dict("records"), fp, ensure_ascii=False, separators=(",", ":"))
 """
