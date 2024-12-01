@@ -400,7 +400,7 @@ class Ecos:
                 end_dt = dt(now.year, (quarter - 1) * 3, 1)
                 start_dt = end_dt - relativedelta(months=(limit - 1) * 3)
             elif freq == FREQ.MONTHLY:
-                end_dt = dt(now.year, now.month - 1, 1)
+                end_dt = dt(now.year, now.month, 1) - relativedelta(months=1)
                 start_dt = end_dt - relativedelta(months=(limit - 1))
             elif freq == FREQ.SEMI_MONTHLY:
                 _, now_days = monthrange(now.year, now.month)
@@ -416,7 +416,7 @@ class Ecos:
                     if r:
                         start_dt -= relativedelta(day=1)
             elif freq == FREQ.DAILY:
-                end_dt = dt(now.year, now.month, now.day - 1)
+                end_dt = dt(now.year, now.month, now.day) - relativedelta(days=1)
                 start_dt = end_dt - relativedelta(days=(limit - 1))
             else:
                 raise ValueError(f"invalid freq, got {freq=}")
