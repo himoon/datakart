@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Literal
 
 import requests
@@ -12,10 +13,17 @@ session: requests.Session = None
 class Fss:
     """금융감독원 `금융상품 한눈에` Open API"""
 
-    def __init__(self, api_key: str, api_url: str = None, delay: float = 0.0) -> None:
+    def __init__(self, api_key: str, api_url: str | None = None, delay: float = 0.0) -> None:
         self.api_key: str = api_key
         self.api_url: str = api_url if api_url else "http://finlife.fss.or.kr"
         self.delay: float = delay
+
+    @staticmethod
+    def raise_for_err_cd(result: dict):
+        if result.get("err_cd") != "000":
+            err_cd = result.get("err_cd")
+            err_msg = result.get("err_msg", "Unknown error")
+            raise ValueError(f"API Error: [{err_cd}] {err_msg}")
 
     def deposit_search(
         self,
@@ -27,7 +35,7 @@ class Fss:
         try:
             import pandas as pd
         except ImportError:
-            raise ImportError("Pandas package is required")
+            raise ImportError("pandas is required for this functionality. Install it with: pip install pandas")
 
         global session
         if session is None:
@@ -45,6 +53,7 @@ class Fss:
             resp = session.get(self.api_url + url)
             parsed = resp.json()
             result = parsed.get("result", {})
+            self.raise_for_err_cd(result)
 
             base_list = result.get("baseList", [])
             option_list = result.get("optionList", [])
@@ -67,5 +76,8 @@ class Fss:
             if max_page_no <= now_page_no:
                 break
             page_no += 1
+
+            if self.delay:
+                time.sleep(self.delay)
 
         return pd.concat(concat).to_dict(orient="records") if concat else []
