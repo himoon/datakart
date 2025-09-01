@@ -19,5 +19,3 @@ __all__ = [
     "NaverAd",
     "Sgis",
 ]
-
-__version__ = "1.23"
