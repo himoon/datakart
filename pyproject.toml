@@ -26,4 +26,3 @@ Issues = "https://github.com/himoon/datakart/issues"
 
 [tool.hatch.version]
 source = "vcs"
-path = "src/datakart/__init__.py"
