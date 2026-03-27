@@ -12,11 +12,14 @@
     "editor.codeActionsOnSave": {
       "source.organizeImports": "explicit"
     },
-    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true
   },
   "files.exclude": {
     "**/__pycache__": true
   },
-  "jupyter.interactiveWindow.textEditor.executeSelection": true
+  "files.trimTrailingWhitespace": true,
+  "jupyter.interactiveWindow.creationMode": "perFile",
+  "jupyter.interactiveWindow.textEditor.executeSelection": true,
+  "jupyter.notebookFileRoot": "${workspaceFolder}"
 }
