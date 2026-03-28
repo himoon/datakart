@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
-from enum import Enum
+from enum import StrEnum
+from typing import Any, cast
 
 import requests
 import xmltodict
@@ -11,7 +12,7 @@ from ratelimit import limits, sleep_and_retry
 logger = logging.getLogger(__name__)
 
 
-class RespType(str, Enum):
+class RespType(StrEnum):
     JSON = "json"
     XML = "xml"
 
@@ -20,139 +21,137 @@ class RespType(str, Enum):
 
 
 class Datagokr:
-    def __init__(self, api_key: str = None) -> None:
-        if not api_key:
+    """Interface for public data portal (data.go.kr) APIs."""
+
+    BASE_URL = "http://apis.data.go.kr"
+
+    def __init__(self, api_key: str | None = None) -> None:
+        if api_key is None:
             raise ValueError(f"invalid api_key, got {api_key!r}")
         self.api_key = api_key
 
-    @sleep_and_retry
-    @limits(calls=25, period=1)
-    def lawd_code(self, region: str = None, n_rows: int = 1000) -> list[dict]:
-        # https://www.data.go.kr/data/15077871/openapi.do
-        def _api_call(region: str, n_rows: int, page: int) -> dict:
-            url = "http://apis.data.go.kr/1741000/StanReginCd/getStanReginCdList"
+    def _request(self, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
+        """Performs an API request and parses the response (JSON or XML)."""
+        url = f"{self.BASE_URL}{endpoint}"
+        params.update({"serviceKey": self.api_key})
+        resp = requests.get(url, params=params)
+        resp.raise_for_status()
+
+        # If explicitly requesting JSON, try JSON first
+        if params.get("type") in (RespType.JSON, "json"):
+            try:
+                return cast(dict[str, Any], resp.json())
+            except (
+                json.JSONDecodeError,
+                requests.exceptions.JSONDecodeError,
+                AttributeError,
+            ):
+                return cast(dict[str, Any], xmltodict.parse(resp.content))
+
+        # Otherwise, try XML first (common for many data.go.kr APIs)
+        try:
+            return cast(dict[str, Any], xmltodict.parse(resp.content))
+        except Exception:
+            try:
+                return cast(dict[str, Any], resp.json())
+            except Exception:
+                raise ValueError(
+                    f"Failed to parse response: {resp.text[:100]}"
+                ) from None
+
+    @sleep_and_retry  # type: ignore
+    @limits(calls=25, period=1)  # type: ignore
+    def lawd_code(
+        self, region: str | None = None, n_rows: int = 1000
+    ) -> list[dict[str, Any]]:
+        """Fetch region (lawd) codes.
+        https://www.data.go.kr/data/15077871/openapi.do
+        """
+        endpoint = "/1741000/StanReginCd/getStanReginCdList"
+        page = 1
+        result: list[dict[str, Any]] = []
+
+        while True:
             params = {
-                "serviceKey": f"{self.api_key}",
-                "pageNo": f"{page}",
-                "numOfRows": f"{n_rows}",
-                "type": f"{RespType.JSON}",
+                "pageNo": page,
+                "numOfRows": n_rows,
+                "type": RespType.JSON,
                 "locatadd_nm": region,
             }
-            resp = requests.get(url, params=params)
-            try:
-                return resp.json()
-            except json.JSONDecodeError:
-                return xmltodict.parse(resp.content)
+            parsed = self._request(endpoint, params)
 
-        page: int = 1
-        total_cnt: int = None
-        total_page: int = None
-        result: list[dict] = []
-        while True:
-            parsed = _api_call(region=region, n_rows=n_rows, page=page)
             if "StanReginCd" in parsed:
-                first, second = parsed.get("StanReginCd", [])
-                if not total_cnt:
-                    head = first.get("head", [])
-                    total_cnt = head[0].get("totalCount", 0)
-                row = second.get("row", [])
-                if n_rows >= total_cnt:
-                    return row
-                result += row
+                data_parts = parsed["StanReginCd"]
+                # Structure is typically [ {head: ...}, {row: ...} ]
+                head = data_parts[0].get("head", [{}])[0]
+                rows = data_parts[1].get("row", [])
 
-                if not total_page:
-                    total_page, remainder = divmod(total_cnt, n_rows)
-                    if remainder > 0:
-                        total_page += 1
-                if page >= total_page:
+                total_cnt = int(head.get("totalCount", 0))
+                result.extend(rows if isinstance(rows, list) else [rows])
+
+                if len(result) >= total_cnt or not rows:
                     return result
                 page += 1
 
             elif "RESULT" in parsed:
-                err_code = parsed.get("RESULT", {})
-                e_code = err_code.get("resultCode", "")
-                e_msg = err_code.get("resultMsg", "")
-                raise ValueError(f"[{e_code}] {e_msg}")
-
+                res = parsed["RESULT"]
+                raise ValueError(f"[{res.get('resultCode')}] {res.get('resultMsg')}")
             else:
                 raise ValueError(f"invalid response, got {parsed!r}")
 
-    @sleep_and_retry
-    @limits(calls=25, period=1)
-    def apt_trade(self, lawd_code: str, deal_ym: str, n_rows: int = 9999) -> list[dict]:
-        # https://www.data.go.kr/data/15126469/openapi.do
-        def _api_call(lawd_code: str, deal_ym: str, n_rows: int, page: int) -> dict:
-            url = "http://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade"
-            params = {
-                "serviceKey": f"{self.api_key}",
-                "LAWD_CD": f"{lawd_code}",
-                "DEAL_YMD": f"{deal_ym}",
-                "numOfRows": f"{n_rows}",
-                "pageNo": f"{page}",
-            }
-            resp = requests.get(url, params=params)
-            resp.raise_for_status()
-            return xmltodict.parse(resp.content)
+    def _fetch_trade_data(
+        self, endpoint: str, params: dict[str, Any], n_rows: int
+    ) -> list[dict[str, Any]]:
+        """Generic handler for apartment trade data pagination."""
+        page = 1
+        result: list[dict[str, Any]] = []
 
-        page: int = 1
-        total_cnt: int = None
-        result: list[dict] = []
         while True:
-            parsed = _api_call(lawd_code=lawd_code, deal_ym=deal_ym, n_rows=n_rows, page=page)
-            response: dict = parsed.get("response", {})
-            header: dict = response.get("header", {})
-            result_code = header.get("resultCode", "")
-            if result_code == "000":
-                body: dict = response.get("body", {})
-                items: dict = body.get("items", {})
-                if items:
-                    item: list = items.get("item", [])
-                    result += item
-                    total_cnt = int(body.get("totalCount", 0))
-                    if len(result) >= total_cnt:
-                        return result
-                    page += 1
-                else:
-                    return result
-            else:
-                raise ValueError(f'[{result_code}] {header.get("resultMsg","")}')
+            params.update({"pageNo": page, "numOfRows": n_rows})
+            parsed = self._request(endpoint, params)
 
-    @sleep_and_retry
-    @limits(calls=25, period=1)
-    def apt_trade_detailed(self, lawd_code: str, deal_ym: str, n_rows: int = 1000) -> list[dict]:
-        # https://www.data.go.kr/data/15126468/openapi.do
-        def _api_call(lawd_code: str, deal_ym: str, n_rows: int, page: int) -> dict:
-            url = "http://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev"
-            params = {
-                "serviceKey": f"{self.api_key}",
-                "LAWD_CD": f"{lawd_code}",
-                "DEAL_YMD": f"{deal_ym}",
-                "numOfRows": f"{n_rows}",
-                "pageNo": f"{page}",
-            }
-            resp = requests.get(url, params=params)
-            resp.raise_for_status()
-            return xmltodict.parse(resp.content)
+            response = parsed.get("response", {})
+            header = response.get("header", {})
+            result_code = header.get("resultCode")
 
-        page: int = 1
-        total_cnt: int = None
-        result: list[dict] = []
-        while True:
-            parsed = _api_call(lawd_code=lawd_code, deal_ym=deal_ym, n_rows=n_rows, page=page)
-            response: dict = parsed.get("response", {})
-            header: dict = response.get("header", {})
-            result_code = header.get("resultCode", "")
             if result_code == "000":
-                body: dict = response.get("body", {})
-                items: dict = body.get("items", {})
-                if items:
-                    item: list = items.get("item", [])
-                    result += item
-                    total_cnt = int(body.get("totalCount", 0))
-                    if len(result) >= total_cnt:
-                        return result
-                    page += 1
-                else:
+                body = response.get("body", {})
+                items_wrapper = body.get("items")
+                if not items_wrapper:
                     return result
+
+                items = items_wrapper.get("item", [])
+                # Ensure items is always a list (xmltodict returns dict for single item)
+                item_list = items if isinstance(items, list) else [items]
+                result.extend(item_list)
+
+                total_cnt = int(body.get("totalCount", 0))
+                if len(result) >= total_cnt or not item_list:
+                    return result
+                page += 1
             else:
-                raise ValueError(f'[{result_code}] {header.get("resultMsg","")}')
+                raise ValueError(f"[{result_code}] {header.get('resultMsg')}")
+
+    @sleep_and_retry  # type: ignore
+    @limits(calls=25, period=1)  # type: ignore
+    def apt_trade(
+        self, lawd_code: str, deal_ym: str, n_rows: int = 9999
+    ) -> list[dict[str, Any]]:
+        """Fetch apartment trade data.
+        https://www.data.go.kr/data/15126469/openapi.do
+        """
+        endpoint = "/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade"
+        params = {"LAWD_CD": lawd_code, "DEAL_YMD": deal_ym}
+        return self._fetch_trade_data(endpoint, params, n_rows)
+
+    @sleep_and_retry  # type: ignore
+    @limits(calls=25, period=1)  # type: ignore
+    def apt_trade_detailed(
+        self, lawd_code: str, deal_ym: str, n_rows: int = 1000
+    ) -> list[dict[str, Any]]:
+        """Fetch detailed apartment trade data.
+        https://www.data.go.kr/data/15126468/openapi.do
+        """
+        endpoint = "/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev"
+        params = {"LAWD_CD": lawd_code, "DEAL_YMD": deal_ym}
+        return self._fetch_trade_data(endpoint, params, n_rows)
