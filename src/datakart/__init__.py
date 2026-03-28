@@ -1,3 +1,10 @@
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("datakart")
+except PackageNotFoundError:
+    __version__ = "0.0.0.dev0"
+
 from .core.datagokr import Datagokr
 from .core.ecos import Ecos
 from .core.fss import Fss
